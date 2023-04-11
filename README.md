@@ -245,7 +245,7 @@ If you find this project helpful for your research, please consider citing the f
 
 ## build an api based on fastapi
 ```bash
-api = "http://x.x.x.x:7590/gsa"
+  api = "http://x.x.x.x:7590/gsa"
   data = json.dumps({"pic_url": "https://content.thirtyonewhiskey.com/wp-content/uploads/2019/12/27115532/00100lrPORTRAIT_00100_BURST20191231110952952_COVER-1024x768.jpg", "task_type": "seg", "text_prompt": "a bottle", "box_threshold": 0.5, "text_threshold": 0.5})
-  requets.post(url=url, data=data).json()
+  requets.post(url=api, data=data).json()
 ```
