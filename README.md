@@ -246,6 +246,13 @@ If you find this project helpful for your research, please consider citing the f
 ## build an api based on fastapi
 ```bash
   api = "http://x.x.x.x:7590/gsa"
-  data = json.dumps({"pic_url": "https://content.thirtyonewhiskey.com/wp-content/uploads/2019/12/27115532/00100lrPORTRAIT_00100_BURST20191231110952952_COVER-1024x768.jpg", "task_type": "seg", "text_prompt": "a bottle", "box_threshold": 0.5, "text_threshold": 0.5})
+  {
+        "pic_url": "http://p2.itc.cn/images01/20230404/7feb96302d264c008d4fd0e762c43387.jpeg",
+        "task_type": "det",
+        "text_prompt": "some people stand in the yard, everyone is dressed in chinese traditional dress and hold something",
+        "box_threshold": 0.3,
+        "text_threshold": 0.35
+        }
+
   requets.post(url=api, data=data).json()
 ```
