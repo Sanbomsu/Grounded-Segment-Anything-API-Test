@@ -253,6 +253,11 @@ If you find this project helpful for your research, please consider citing the f
         "box_threshold": 0.3,
         "text_threshold": 0.35
         }
-
-  requets.post(url=api, data=data).json()
+  # 返回图片的base64
+  res = requets.post(url=api, data=data).json()
+```
+```bash
+  api = "http://x.x.x.x:7590/gsa?img=xxxxxx"
+  # 返回检测后主体的bbox
+  bbox = requets.post(url=api, data=data).json()
 ```
