@@ -245,6 +245,9 @@ If you find this project helpful for your research, please consider citing the f
 
 ## build an api based on fastapi
 ```bash
+  python3 gsa_api.py
+```
+```bash
   api = "http://x.x.x.x:7590/gsa"
   {
         "pic_url": "http://p2.itc.cn/images01/20230404/7feb96302d264c008d4fd0e762c43387.jpeg",
