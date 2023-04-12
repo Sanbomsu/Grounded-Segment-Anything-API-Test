@@ -82,7 +82,7 @@ def plot_boxes_to_image(image_pil, tgt):
 
         mask_draw.rectangle([x0, y0, x1, y1], fill=255, width=6)
 
-    return image_pil, mask
+    return image_pil, mask, (x0, y0, x1, y1)
 
 def load_image(image_path):
     # # load image
@@ -172,7 +172,7 @@ def get_img_b64(img, fmt='png'):
 config_file = 'GroundingDINO/groundingdino/config/GroundingDINO_SwinT_OGC.py'
 ckpt_repo_id = "ShilongLiu/GroundingDINO"
 ckpt_filenmae = "groundingdino_swint_ogc.pth"
-sam_checkpoint='sam_vit_h_4b8939.pth' 
+sam_checkpoint= 'sam_vit_h_4b8939.pth' 
 output_dir="outputs"
 device="cuda"
 
@@ -285,6 +285,73 @@ def run_grounded_sam(image_path, text_prompt, task_type, inpaint_prompt, box_thr
     
     else:
         print("task_type:{} error!".format(task_type))
+        
+def run_grounded_sam_bbox(image_path, text_prompt, task_type, inpaint_prompt, box_threshold, text_threshold, image_name):
+    assert text_prompt, 'text_prompt is not found!'
+
+    # make dir
+    os.makedirs(output_dir, exist_ok=True)
+    # load image
+    image_pil, image = load_image(image_path.convert("RGB"))
+    # load model
+    model = load_model_hf(config_file, ckpt_repo_id, ckpt_filenmae)
+
+    # visualize raw image
+    # image_pil.save(os.path.join(output_dir, "raw_image.jpg"))
+    # 传入图片文件名
+    # image_pil.save(os.path.join(output_dir, image_name))
+
+    # run grounding dino model
+    boxes_filt, pred_phrases = get_grounding_output(
+        model, image, text_prompt, box_threshold, text_threshold, device=device
+    )
+
+    size = image_pil.size
+
+    if task_type == 'seg' or task_type == 'inpainting':
+        # initialize SAM
+        predictor = SamPredictor(build_sam(checkpoint=sam_checkpoint))
+        image = np.array(image_path)
+        predictor.set_image(image)
+
+        H, W = size[1], size[0]
+        for i in range(boxes_filt.size(0)):
+            boxes_filt[i] = boxes_filt[i] * torch.Tensor([W, H, W, H])
+            boxes_filt[i][:2] -= boxes_filt[i][2:] / 2
+            boxes_filt[i][2:] += boxes_filt[i][:2]
+
+        boxes_filt = boxes_filt.cpu()
+        transformed_boxes = predictor.transform.apply_boxes_torch(boxes_filt, image.shape[:2])
+
+        masks, _, _ = predictor.predict_torch(
+            point_coords = None,
+            point_labels = None,
+            boxes = transformed_boxes,
+            multimask_output = False,
+        )
+
+        # masks: [1, 1, 512, 512]
+
+    if task_type == 'det':
+
+        pred_dict = {
+            "boxes": boxes_filt,
+            "size": [size[1], size[0]],  # H,W
+            "labels": pred_phrases,
+        }
+        # import ipdb; ipdb.set_trace()
+        image_with_box = plot_boxes_to_image(image_pil, pred_dict)[0]
+        bbox = plot_boxes_to_image(image_pil, pred_dict)[2]
+        # image_path = os.path.join(output_dir, "grounding_dino_output.jpg")
+        # image_path = os.path.join(output_dir, f"grounding_dino_output_{image_name}")
+        # image_with_box.save(image_path)
+        # image_result = cv2.cvtColor(cv2.imread(image_path), cv2.COLOR_BGR2RGB)
+        # return image_result
+
+
+        # 将检测后的图片转换成png格式后输出base64
+        # return get_img_b64(image_with_box)
+        return bbox
 
 from fastapi import FastAPI, Body, responses
 import json
@@ -335,6 +402,20 @@ async def main(data: Item):
 
     # 返回图片的base64值，完整值
     return responses.JSONResponse(content={"data": res, "prefix": "data:image/png;base64,"})
-
+@app.post("/crop")
+async def crop(img):
+    parser = argparse.ArgumentParser("Grounded SAM demo", add_help=True)
+    parser.add_argument("--debug", action="store_true", help="using debug mode")
+    parser.add_argument("--share", action="store_true", help="share the app")
+    # ic(img)
+    
+    if os.path.exists(img):
+        # 如果是本地文件则直接打开
+        img_path = Image.open(img)
+    else:
+        # 如果是远程图片链接则使用二进制流的方式处理
+        img_path = Image.open(BytesIO(requests.get(img).content))
+    res = run_grounded_sam_bbox(image_path=img_path, text_prompt='a bottle', task_type='det', inpaint_prompt='', box_threshold=0.4, text_threshold=0.4, image_name='demo.jpg')
+    return res
 if __name__ == "__main__":
     uvicorn.run(app='det_api:app', host='0.0.0.0', port=7590, reload=True)
