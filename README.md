@@ -265,9 +265,10 @@ If you find this project helpful for your research, please consider citing the f
   bbox = requets.post(url=api, data=data).json()
 ```
 ## Here is my workaround to run the model without connecting to huggingface:
-
+```bash
   Step 1: download necessary files listed in huggingface-bert-base-uncased, including config.json, flax_model.msgpack, pytorch_model.bin, tf_model.h5, tokenizer.json, tokenizer_config.json, vocab.txt
   Step 2: put downloaded files (Step 1) into your local folder. For example, the local folder could be Grounded-Segment-Anything/huggingface/bert-base-uncased
   Step 3: modify text_encoder_type in get_tokenlizer.py#L17
   and get_tokenlizer.py#L23 to your local folder (defined in Step 2)
   Step 4: run the model and enjoy it
+```
