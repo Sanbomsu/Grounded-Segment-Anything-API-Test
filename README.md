@@ -264,7 +264,7 @@ If you find this project helpful for your research, please consider citing the f
   # 返回检测后主体的bbox
   bbox = requets.post(url=api, data=data).json()
 ```
-## Here is my workaround to run the model without connecting to huggingface:
+## [Here is my workaround to run the model without connecting to huggingface](https://github.com/IDEA-Research/Grounded-Segment-Anything/issues/75#issuecomment-1508225437):
 ```bash
   Step 1: download necessary files listed in huggingface-bert-base-uncased, including config.json, flax_model.msgpack, pytorch_model.bin, tf_model.h5, tokenizer.json, tokenizer_config.json, vocab.txt
   Step 2: put downloaded files (Step 1) into your local folder. For example, the local folder could be Grounded-Segment-Anything/huggingface/bert-base-uncased
