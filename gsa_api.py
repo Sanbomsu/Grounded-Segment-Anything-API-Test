@@ -37,7 +37,8 @@ def load_model_hf(model_config_path, repo_id, filename, device='cpu'):
     model = build_model(args)
     args.device = device
 
-    cache_file = hf_hub_download(repo_id=repo_id, filename=filename)
+#     cache_file = hf_hub_download(repo_id=repo_id, filename=filename)
+    cache_file = 'local_path/groundingdino_swint_ogc.pth'
     checkpoint = torch.load(cache_file, map_location='cpu')
     log = model.load_state_dict(clean_state_dict(checkpoint['model']), strict=False)
     print("Model loaded from {} \n => {}".format(cache_file, log))
