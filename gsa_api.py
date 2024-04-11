@@ -655,12 +655,12 @@ class Point(BaseModel):
 
 
 class SamAPIParams(BaseModel):
-  image_base64: str = Field(default=None, description='image base64')
-  image_url: str = Field(default=None, description='image url')
-  points: Optional[List[Point]] = Field(default_factory=List,
+  image_base64: Optional[str] = Field(default=None, description='image base64')
+  image_url: Optional[str] = Field(default=None, description='image url')
+  points: Optional[List[Point]] = Field(default_factory=list,
                                         description='points')
-  box_threshold: float = Field(default=0.4,
-                               description='box_threshold')
+  box_threshold: Optional[float] = Field(default=0.4,
+                                         description='box_threshold')
 
 
 def show_anns(anns):
@@ -679,10 +679,12 @@ def show_anns(anns):
       img[:, :, i] = color_mask[i]
     ax.imshow(np.dstack((img, m * 0.35)))
 
+
 import sys
 
 sys.path.append("..")
 from segment_anything import sam_model_registry, SamAutomaticMaskGenerator
+
 
 @app.post("/sam")
 async def sam(data: SamAPIParams):
@@ -692,7 +694,7 @@ async def sam(data: SamAPIParams):
     content = base64.b64decode(data.image_base64.encode())
   elif data.image_url:
     suffix = '.' + data.image_url.split('.')[-1]
-    content = requests.get(data.pic_url).content
+    content = requests.get(data.image_url).content
   else:
     return {}
   from tempfile import NamedTemporaryFile
