@@ -1,3 +1,7 @@
+import re
+from enum import Enum
+from typing import List
+
 import gradio as gr
 
 import argparse
@@ -7,6 +11,7 @@ import copy
 import numpy as np
 import torch
 from PIL import Image, ImageDraw, ImageFont
+from pydantic import Field
 
 # Grounding DINO
 import GroundingDINO.groundingdino.datasets.transforms as T
@@ -629,6 +634,105 @@ async def gsa_onnx(data: GsaOnnxParams):
                               image_name=img_name)
   return responses.JSONResponse(
       content={"data": res['data'], "prefix": "data:image/png;base64,"})
+
+
+################################# SAM API #####################################
+class ClickTypeEnum(Enum):
+  # 负选择点
+  negative = 0
+  # 正选择点
+  positive = 1
+  # box左上角坐标
+  box_top_left = 2
+  # box右下角坐标
+  box_bottom_right = 3
+
+
+class Point(BaseModel):
+  x: float
+  y: float
+  clickType: ClickTypeEnum
+
+
+class SamAPIParams(BaseModel):
+  image_base64: str = Field(default=None, description='image base64')
+  image_url: str = Field(default=None, description='image url')
+  points: Optional[List[Point]] = Field(default_factory=List,
+                                        description='points')
+  box_threshold: float = Field(default=0.4,
+                               description='box_threshold')
+
+
+def show_anns(anns):
+  if len(anns) == 0:
+    return
+  sorted_anns = sorted(anns, key=(lambda x: x['area']), reverse=True)
+  ax = plt.gca()
+  ax.set_autoscale_on(False)
+  polygons = []
+  color = []
+  for ann in sorted_anns:
+    m = ann['segmentation']
+    img = np.ones((m.shape[0], m.shape[1], 3))
+    color_mask = np.random.random((1, 3)).tolist()[0]
+    for i in range(3):
+      img[:, :, i] = color_mask[i]
+    ax.imshow(np.dstack((img, m * 0.35)))
+
+import sys
+
+sys.path.append("..")
+from segment_anything import sam_model_registry, SamAutomaticMaskGenerator
+
+@app.post("/sam")
+async def sam(data: SamAPIParams):
+  if data.image_base64:
+    _, data = data.image_base64.split(',')
+    suffix = '.' + re.match(r'data:image/(\w+);base64', _).group(1)
+    content = base64.b64decode(data.image_base64.encode())
+  elif data.image_url:
+    suffix = '.' + data.image_url.split('.')[-1]
+    content = requests.get(data.pic_url).content
+  else:
+    return {}
+  from tempfile import NamedTemporaryFile
+  with NamedTemporaryFile(mode='wb',
+                          dir='/tmp',
+                          suffix=suffix,
+                          delete=True) as fw:
+    fw.write(content)
+    image = cv2.imread(fw.name)
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    sam_checkpoint = "sam_vit_h_4b8939.pth"
+    device = "cuda"
+    model_type = "default"
+    sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
+    sam.to(device=device)
+
+    mask_generator_2 = SamAutomaticMaskGenerator(
+        model=sam,
+        points_per_side=32,
+        pred_iou_thresh=0.86,
+        stability_score_thresh=0.92,
+        crop_n_layers=1,
+        crop_n_points_downscale_factor=2,
+        min_mask_region_area=100,  # Requires open-cv to run post-processing
+    )
+    masks2 = mask_generator_2.generate(image)
+    len(masks2)
+    plt.figure(figsize=(20, 20))
+    plt.imshow(image)
+    show_anns(masks2)
+    plt.axis('off')
+    plt.show()
+
+    with NamedTemporaryFile(mode='wb',
+                            dir='/tmp',
+                            suffix=suffix,
+                            delete=True) as fw2:
+      plt.savefig(fw2.name, bbox_inches="tight")
+      fw2.file.close()
+      return {'data': get_img_b64(Image.open(fw2.name))}
 
 
 if __name__ == "__main__":
